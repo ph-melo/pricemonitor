@@ -1,0 +1,107 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pricemonitor}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Configuração de mail desabilitada por padrão (evita erro de boot sem credenciais)
+  mail:
+    host: localhost
+    port: 1025
+    username: dev@localhost
+    password: dev
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+app:
+  mail:
+    from: "PriceMonitor <dev@localhost>"
+  jwt:
+    secret: ${JWT_SECRET:dev-secret-key-that-is-at-least-32-chars-long!}
+    expiration-ms: 86400000
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+mercadolivre:
+  api:
+    base-url: https://api.mercadolibre.com
+    timeout-ms: 5000
+
+resilience4j:
+  ratelimiter:
+    instances:
+      mlScrape:
+        limitForPeriod: 20
+        limitRefreshPeriod: 1m
+        timeoutDuration: 2s
+
+  retry:
+    instances:
+      mlScrape:
+        maxAttempts: 3
+        waitDuration: 800ms
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.lang.IllegalStateException
+
+logging:
+  level:
+    com.paulo.pricemonitor: DEBUG
+    io.github.resilience4j: INFO
+
+---
+# Profile SMTP: e-mail real via Gmail
+# Ativar com: SPRING_PROFILES_ACTIVE=smtp
+spring:
+  config:
+    activate:
+      on-profile: smtp
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+app:
+  mail:
+    from: "PriceMonitor <${MAIL_USERNAME}>"
+
+---
+# Profile de produção (Render, etc.)
+# Ativar com: SPRING_PROFILES_ACTIVE=smtp,prod
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    show-sql: false
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}

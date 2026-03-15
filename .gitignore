@@ -1,0 +1,39 @@
+# ─── Java / Maven ─────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.pid
+
+# Maven wrapper cache
+.mvn/repository
+
+# ─── Spring Boot ──────────────────────────────────────────────────────────────
+spring-shell.log
+
+# ─── IntelliJ IDEA ────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ─── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+pricemonitor-web/node_modules/
+pricemonitor-web/dist/
+pricemonitor-web/.env
+pricemonitor-web/.env.local
+pricemonitor-web/.env.*.local
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Variáveis de ambiente locais ─────────────────────────────────────────────
+.env
+.env.local

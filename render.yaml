@@ -1,0 +1,58 @@
+databases:
+  - name: pricemonitor-db
+    databaseName: pricemonitor
+    user: pricemonitor
+    plan: free
+
+services:
+  # ─── Backend: Spring Boot ────────────────────────────────────────────────────
+  - type: web
+    name: pricemonitor-api
+    plan: free
+    runtime: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/pricemonitor-0.0.1-SNAPSHOT.jar
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: smtp,prod
+      - key: DB_URL
+        fromDatabase:
+          name: pricemonitor-db
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: pricemonitor-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: pricemonitor-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MAIL_USERNAME
+        sync: false   # preencher manualmente no dashboard
+      - key: MAIL_PASSWORD
+        sync: false   # App Password do Gmail — preencher manualmente
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false   # URL do frontend ex: https://pricemonitor-web.onrender.com
+
+  # ─── Frontend: React / Vite ──────────────────────────────────────────────────
+  - type: web
+    name: pricemonitor-web
+    plan: free
+    runtime: static
+    rootDir: pricemonitor-web
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false   # URL do backend ex: https://pricemonitor-api.onrender.com
