@@ -3,6 +3,9 @@ package com.paulo.pricemonitor.marketplace.mercadolivre.scraper;
 import com.paulo.pricemonitor.marketplace.MarketplaceTemporarilyBlockedException;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -67,7 +70,48 @@ public class MlHtmlFetcher {
             throw new MarketplaceTemporarilyBlockedException("Detectado challenge/anti-bot na resposta.");
         }
 
+        // Se caiu em página social de afiliado (/social/), extrai o link do produto
+        if (normalizedUrl.contains("/social/")) {
+            String productUrl = extractProductUrlFromSocialPage(body);
+            if (productUrl != null) {
+                // Busca o HTML da página real do produto
+                return getHtml(productUrl);
+            }
+            throw new IllegalArgumentException(
+                    "Link de afiliado não suportado. Clique em 'Ir para produto' e copie a URL do produto diretamente.");
+        }
+
         return body;
+    }
+
+    /**
+     * Extrai a URL do produto a partir de uma página social de afiliado (/social/).
+     * Procura pelo botão "Ir para produto" e retorna o href.
+     */
+    static String extractProductUrlFromSocialPage(String html) {
+        if (html == null) return null;
+        try {
+            Document doc = Jsoup.parse(html);
+
+            // Tenta achar o botão "Ir para produto" ou "Ver produto"
+            for (Element a : doc.select("a[href]")) {
+                String href = a.attr("abs:href");
+                String text = a.text().toLowerCase();
+                if ((text.contains("ir para produto") || text.contains("ver produto") || text.contains("comprar"))
+                        && (href.contains("mercadolivre.com.br") || href.contains("mercadolibre.com"))) {
+                    return href;
+                }
+            }
+
+            // Fallback: qualquer link do ML que pareça produto (contém MLB no path)
+            for (Element a : doc.select("a[href*='mercadolivre.com.br']")) {
+                String href = a.attr("abs:href");
+                if (href.matches(".*/(MLB|p/MLB).*")) {
+                    return href;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     /**
@@ -91,8 +135,7 @@ public class MlHtmlFetcher {
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(5000);
                 conn.setReadTimeout(5000);
-                conn.setRequestProperty("User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36");
+                conn.setRequestProperty("User-Agent", userAgent());
                 conn.setRequestProperty("Accept", "text/html,application/xhtml+xml");
                 conn.connect();
 
@@ -104,13 +147,11 @@ public class MlHtmlFetcher {
                         || status == 303 || status == 307 || status == 308;
 
                 if (isRedirect && location != null && !location.isBlank()) {
-                    // Trata redirects relativos (ex: /p/MLB123)
                     if (location.startsWith("/")) {
                         java.net.URL base = new java.net.URL(current);
                         location = base.getProtocol() + "://" + base.getHost() + location;
                     }
                     current = location;
-                    // Se já chegou no ML, pode parar
                     if (current.contains("mercadolivre.com.br") || current.contains("mercadolibre.com")) {
                         return current;
                     }
@@ -136,19 +177,16 @@ public class MlHtmlFetcher {
     static String normalizeUrl(String url) {
         if (url == null || url.isBlank()) return url;
 
-        // 1. Troca subdominio produto. por www.
         String normalized = url.replaceFirst(
                 "(?i)https?://produto\\.mercadolivre\\.com\\.br",
                 "https://www.mercadolivre.com.br"
         );
 
-        // 2. Remove fragmento inteiro
         int hashIdx = normalized.indexOf('#');
         if (hashIdx != -1) {
             normalized = normalized.substring(0, hashIdx);
         }
 
-        // 3. Remove query params de rastreamento de anuncio
         if (normalized.contains("?")) {
             String[] parts = normalized.split("\\?", 2);
             String base = parts[0];
@@ -166,7 +204,6 @@ public class MlHtmlFetcher {
             normalized = clean.length() > 0 ? base + "?" + clean : base;
         }
 
-        // 4. Reconstroi URL limpa se path terminar com sufixo _XX (ex: _JM)
         if (normalized.matches(".*_[A-Z]{2}$")) {
             java.util.regex.Matcher m = java.util.regex.Pattern
                     .compile("/(MLB-?(\\d+))")
