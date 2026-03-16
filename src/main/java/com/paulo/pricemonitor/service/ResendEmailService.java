@@ -1,6 +1,7 @@
 package com.paulo.pricemonitor.service;
 
 import com.resend.Resend;
+import com.resend.core.exception.ResendException;
 import com.resend.services.emails.model.CreateEmailOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,10 @@ public class ResendEmailService implements EmailService {
                 .html(html)
                 .build();
 
-        resend.emails().send(params);
+        try {
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            throw new RuntimeException("Falha ao enviar e-mail via Resend: " + e.getMessage(), e);
+        }
     }
 }
