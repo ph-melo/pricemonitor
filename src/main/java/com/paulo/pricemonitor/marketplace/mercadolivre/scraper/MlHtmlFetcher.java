@@ -72,59 +72,71 @@ public class MlHtmlFetcher {
 
     /**
      * Resolve redirecionamentos de links curtos e afiliados (ex: meli.la/xxx)
-     * seguindo os redirects HTTP até chegar na URL final do Mercado Livre.
+     * seguindo todos os redirects em loop até chegar na URL final do ML.
      */
     static String resolveUrl(String url) {
         if (url == null || url.isBlank()) return url;
-        // Só resolve se não for já uma URL do ML
         if (url.contains("mercadolivre.com.br") || url.contains("mercadolibre.com")) {
             return url;
         }
-        try {
-            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
-                    new java.net.URL(url).openConnection();
-            conn.setInstanceFollowRedirects(false);
-            conn.setRequestMethod("HEAD");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-            conn.setRequestProperty("User-Agent",
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            conn.connect();
 
-            int status = conn.getResponseCode();
-            String location = conn.getHeaderField("Location");
-            conn.disconnect();
+        String current = url;
+        int maxHops = 10;
 
-            if ((status == 301 || status == 302 || status == 303 || status == 307 || status == 308)
-                    && location != null && !location.isBlank()) {
-                // Segue mais um nível se necessário (links com double redirect)
-                return resolveUrl(location);
+        for (int i = 0; i < maxHops; i++) {
+            try {
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                        new java.net.URL(current).openConnection();
+                conn.setInstanceFollowRedirects(false);
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                conn.setRequestProperty("User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36");
+                conn.setRequestProperty("Accept", "text/html,application/xhtml+xml");
+                conn.connect();
+
+                int status = conn.getResponseCode();
+                String location = conn.getHeaderField("Location");
+                conn.disconnect();
+
+                boolean isRedirect = status == 301 || status == 302
+                        || status == 303 || status == 307 || status == 308;
+
+                if (isRedirect && location != null && !location.isBlank()) {
+                    // Trata redirects relativos (ex: /p/MLB123)
+                    if (location.startsWith("/")) {
+                        java.net.URL base = new java.net.URL(current);
+                        location = base.getProtocol() + "://" + base.getHost() + location;
+                    }
+                    current = location;
+                    // Se já chegou no ML, pode parar
+                    if (current.contains("mercadolivre.com.br") || current.contains("mercadolibre.com")) {
+                        return current;
+                    }
+                } else {
+                    break;
+                }
+            } catch (Exception e) {
+                break;
             }
-        } catch (Exception e) {
-            // Se falhar na resolução, tenta com a URL original
         }
-        return url;
+
+        return current;
     }
 
     /**
      * Normaliza URLs do Mercado Livre antes do request:
      *
-     * 1. produto.mercadolivre.com.br → www.mercadolivre.com.br
-     *    O subdomínio "produto." é usado em links de anúncios patrocinados
-     *    e o ML aplica anti-bot muito mais agressivo nele.
-     *
-     * 2. Remove fragmento (#...) inteiramente — parâmetros como
-     *    polycard_client, is_advertising, ad_domain identificam bots.
-     *
-     * 3. Remove sufixo _JM (e similares) do path — ex: /MLB-123-titulo_JM
-     *    Esse sufixo é adicionado em links de anúncios e causa 404 quando
-     *    acessado sem os parâmetros de rastreamento originais.
-     *    Nesse caso reconstrói a URL limpa: /p/MLB123
+     * 1. produto.mercadolivre.com.br -> www.mercadolivre.com.br
+     * 2. Remove fragmento (#...)
+     * 3. Remove query params de rastreamento de anuncio
+     * 4. Reconstroi URL limpa se path terminar com sufixo _XX (ex: _JM)
      */
     static String normalizeUrl(String url) {
         if (url == null || url.isBlank()) return url;
 
-        // 1. Troca subdomínio produto. por www.
+        // 1. Troca subdominio produto. por www.
         String normalized = url.replaceFirst(
                 "(?i)https?://produto\\.mercadolivre\\.com\\.br",
                 "https://www.mercadolivre.com.br"
@@ -136,7 +148,7 @@ public class MlHtmlFetcher {
             normalized = normalized.substring(0, hashIdx);
         }
 
-        // 3. Remove query params de rastreamento de anúncio
+        // 3. Remove query params de rastreamento de anuncio
         if (normalized.contains("?")) {
             String[] parts = normalized.split("\\?", 2);
             String base = parts[0];
@@ -154,8 +166,7 @@ public class MlHtmlFetcher {
             normalized = clean.length() > 0 ? base + "?" + clean : base;
         }
 
-        // 4. Reconstrói URL limpa se o path terminar com sufixo _XX (ex: _JM)
-        //    que é adicionado em links de anúncios e causa 404 sem os params
+        // 4. Reconstroi URL limpa se path terminar com sufixo _XX (ex: _JM)
         if (normalized.matches(".*_[A-Z]{2}$")) {
             java.util.regex.Matcher m = java.util.regex.Pattern
                     .compile("/(MLB-?(\\d+))")
