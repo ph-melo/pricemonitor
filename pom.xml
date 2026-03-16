@@ -15,21 +15,18 @@
 	<groupId>com.paulo</groupId>
 	<artifactId>pricemonitor</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>pricemonitor</name>
+	<n>pricemonitor</n>
 	<description>Demo project for Spring Boot</description>
 
 	<properties>
 		<java.version>17</java.version>
-		<!-- Resilience4j BOM -->
 		<resilience4j.version>2.2.0</resilience4j.version>
-		<!-- Jsoup -->
 		<jsoup.version>1.17.2</jsoup.version>
 		<kotlin.version>2.2.20</kotlin.version>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
-			<!-- Importa BOM do Resilience4j para não precisar colocar versão em cada módulo -->
 			<dependency>
 				<groupId>io.github.resilience4j</groupId>
 				<artifactId>resilience4j-bom</artifactId>
@@ -67,7 +64,7 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- WebFlux (você já tinha; pode remover depois se quiser) -->
+		<!-- WebFlux -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
@@ -119,10 +116,6 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- ========================= -->
-		<!-- MVP Scraping Dependencies -->
-		<!-- ========================= -->
-
 		<!-- HTML parsing (scraping) -->
 		<dependency>
 			<groupId>org.jsoup</groupId>
@@ -147,10 +140,14 @@
 			<groupId>io.github.resilience4j</groupId>
 			<artifactId>resilience4j-spring-boot3</artifactId>
 		</dependency>
+
+		<!-- Resend SDK (substitui spring-boot-starter-mail) -->
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-mail</artifactId>
+			<groupId>com.resend</groupId>
+			<artifactId>resend-java</artifactId>
+			<version>3.1.0</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
 			<artifactId>kotlin-stdlib-jdk8</artifactId>
