@@ -1,0 +1,31 @@
+:root {
+  --bg-primary: linear-gradient(140deg, #f7fafc 0%, #edf2f7 45%, #e2e8f0 100%);
+  --bg-card: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --input-border: #cbd5e1;
+  --input-focus-border: #0ea5e9;
+  --button-bg: #0284c7;
+  --button-hover: #0369a1;
+  --button-secondary: #334155;
+  --shadow: rgba(15, 23, 42, 0.1);
+  --focus-shadow: rgba(14, 165, 233, 0.18);
+  --focus-shadow-button: rgba(14, 165, 233, 0.25);
+}
+
+[data-theme="dark"] {
+  --bg-primary: linear-gradient(140deg, #1a202c 0%, #2d3748 45%, #4a5568 100%);
+  --bg-card: #2d3748;
+  --border-color: #4a5568;
+  --text-primary: #f7fafc;
+  --text-secondary: #cbd5e1;
+  --input-border: #4a5568;
+  --input-focus-border: #0ea5e9;
+  --button-bg: #0284c7;
+  --button-hover: #0369a1;
+  --button-secondary: #475569;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --focus-shadow: rgba(14, 165, 233, 0.18);
+  --focus-shadow-button: rgba(14, 165, 233, 0.25);
+}

@@ -27,7 +27,7 @@ export default function Login() {
       localStorage.setItem("pm_maxProducts", String(data.maxProducts || 3));
 
       navigate("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Email ou senha invalidos");
     } finally {
       setLoading(false);

@@ -1,37 +1,33 @@
-:root {
-  color-scheme: light;
-}
-
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: linear-gradient(140deg, #f7fafc 0%, #edf2f7 45%, #e2e8f0 100%);
+  background: var(--bg-primary);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 24px 45px var(--shadow);
   padding: 28px;
 }
 
 .login-title {
   margin: 0;
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.7rem;
   font-weight: 700;
 }
 
 .login-subtitle {
   margin: 8px 0 22px;
-  color: #475569;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
@@ -42,25 +38,27 @@
 }
 
 .login-label {
-  color: #334155;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .login-input {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--input-border);
   border-radius: 12px;
   padding: 11px 3px;
   font-size: 0.95rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
   margin-bottom: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
 .login-input:focus {
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18);
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 0 3px var(--focus-shadow);
 }
 
 .login-error {
@@ -77,13 +75,13 @@
   font-size: 0.96rem;
   font-weight: 700;
   color: #ffffff;
-  background: #0284c7;
+  background: var(--button-bg);
   cursor: pointer;
   transition: opacity 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
 }
 
 .login-button:hover {
-  background: #0369a1;
+  background: var(--button-hover);
   opacity: 0.9;
 }
 
@@ -94,7 +92,7 @@
 
 .login-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+  box-shadow: 0 0 0 3px var(--focus-shadow-button);
 }
 
 .login-button:disabled {
