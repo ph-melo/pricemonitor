@@ -30,8 +30,8 @@ public class MlHtmlFetcher {
     @Cacheable(cacheNames = "ml_html", key = "#url")
     public String getHtml(String url) {
 
-        // Normaliza URL antes de fazer o request
-        String normalizedUrl = normalizeUrl(url);
+        // Resolve redirecionamentos (links curtos/afiliados) e normaliza
+        String normalizedUrl = normalizeUrl(resolveUrl(url));
 
         var resp = restClient.get()
                 .uri(normalizedUrl)
@@ -68,6 +68,42 @@ public class MlHtmlFetcher {
         }
 
         return body;
+    }
+
+    /**
+     * Resolve redirecionamentos de links curtos e afiliados (ex: meli.la/xxx)
+     * seguindo os redirects HTTP até chegar na URL final do Mercado Livre.
+     */
+    static String resolveUrl(String url) {
+        if (url == null || url.isBlank()) return url;
+        // Só resolve se não for já uma URL do ML
+        if (url.contains("mercadolivre.com.br") || url.contains("mercadolibre.com")) {
+            return url;
+        }
+        try {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL(url).openConnection();
+            conn.setInstanceFollowRedirects(false);
+            conn.setRequestMethod("HEAD");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            conn.connect();
+
+            int status = conn.getResponseCode();
+            String location = conn.getHeaderField("Location");
+            conn.disconnect();
+
+            if ((status == 301 || status == 302 || status == 303 || status == 307 || status == 308)
+                    && location != null && !location.isBlank()) {
+                // Segue mais um nível se necessário (links com double redirect)
+                return resolveUrl(location);
+            }
+        } catch (Exception e) {
+            // Se falhar na resolução, tenta com a URL original
+        }
+        return url;
     }
 
     /**
