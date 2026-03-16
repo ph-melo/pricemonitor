@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { register } from "../services/api";
+import ThemeToggle from "../components/ThemeToggle";
+import { useTheme } from "../theme";
 import "./Login.css"; // reutiliza o mesmo estilo
 
 export default function Register() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,7 +53,10 @@ export default function Register() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <h1 className="login-title">PriceMonitor</h1>
+        <div className="login-card-topbar">
+          <h1 className="login-title">PriceMonitor</h1>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <p className="login-subtitle">Crie sua conta gratuita</p>
 
         <form className="login-form" onSubmit={onSubmit}>

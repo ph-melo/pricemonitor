@@ -6,10 +6,13 @@ import {
   deleteProduct,
   checkProductNow,
 } from "../services/api";
+import ThemeToggle from "../components/ThemeToggle";
+import { useTheme } from "../theme";
 import "./Dashboard.css";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const [productUrl, setProductUrl]   = useState("");
   const [products, setProducts]       = useState([]);
@@ -111,6 +114,7 @@ export default function Dashboard() {
             <p>O monitoramento de preços ocorre a cada 30 minutos.</p>
           </div>
           <div className="dashboard-header-actions">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <button
               className="dashboard-button dashboard-button-ghost"
               type="button"

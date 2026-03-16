@@ -1,7 +1,7 @@
 .dashboard-page {
   min-height: 100vh;
   padding: 24px;
-  background: var(--bg-primary);
+  background: var(--app-bg);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -9,10 +9,10 @@
   width: 100%;
   max-width: 1080px;
   margin: 0 auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
   border-radius: 20px;
-  box-shadow: 0 24px 45px var(--shadow);
+  box-shadow: var(--surface-shadow);
   padding: 28px;
 }
 
@@ -26,20 +26,21 @@
 
 .dashboard-title {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--text-strong);
   font-size: 1.8rem;
   font-weight: 700;
 }
 
 .dashboard-subtitle {
   margin: 8px 0 0;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
 .dashboard-header-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .dashboard-form {
@@ -57,13 +58,17 @@
   font-size: 0.95rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
-  background: var(--bg-card);
-  color: var(--text-primary);
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .dashboard-input:focus {
-  border-color: var(--input-focus-border);
-  box-shadow: 0 0 0 3px var(--focus-shadow);
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18);
+}
+
+.dashboard-input::placeholder {
+  color: var(--text-soft);
 }
 
 .dashboard-button {
@@ -73,13 +78,13 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: #ffffff;
-  background: var(--button-bg);
+  background: var(--button-primary);
   cursor: pointer;
   transition: opacity 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
 }
 
 .dashboard-button:hover {
-  background: var(--button-hover);
+  background: var(--button-primary-hover);
   opacity: 0.9;
 }
 
@@ -90,7 +95,7 @@
 
 .dashboard-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-shadow-button);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
 }
 
 .dashboard-button:disabled {
@@ -103,22 +108,22 @@
 }
 
 .dashboard-button-secondary:hover {
-  background: #1e293b;
+  background: var(--button-secondary-hover);
 }
 
 .dashboard-button-ghost {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--button-ghost);
+  color: var(--button-ghost-text);
 }
 
 .dashboard-button-ghost:hover {
-  background: #cbd5e1;
+  background: var(--button-ghost-hover);
 }
 
 .dashboard-error {
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 12px;
   padding: 10px 12px;
   margin-bottom: 16px;
@@ -127,12 +132,12 @@
 
 .dashboard-list-title {
   margin: 0 0 12px;
-  color: #1e293b;
+  color: var(--text-main);
   font-size: 1.15rem;
 }
 
 .dashboard-table-wrap {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--table-wrap-border);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -146,15 +151,15 @@
 }
 
 .dashboard-table-head {
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--table-head-bg);
+  color: var(--text-main);
   font-weight: 700;
   font-size: 0.9rem;
 }
 
 .dashboard-table-row {
-  border-top: 1px solid #f1f5f9;
-  color: #0f172a;
+  border-top: 1px solid var(--table-row-border);
+  color: var(--text-strong);
   font-size: 0.93rem;
 }
 
@@ -165,7 +170,7 @@
 .dashboard-meta {
   margin-top: 4px;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-soft);
 }
 
 .dashboard-status {
@@ -177,23 +182,23 @@
 }
 
 .dashboard-status-success {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .dashboard-status-warn {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--status-warn-bg);
+  color: var(--status-warn-text);
 }
 
 .dashboard-status-error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
 }
 
 .dashboard-status-neutral {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-text);
 }
 
 .dashboard-link-cell {
@@ -201,7 +206,7 @@
 }
 
 .dashboard-link {
-  color: #0369a1;
+  color: var(--link-color);
   font-weight: 600;
   text-decoration: none;
 }
@@ -213,7 +218,7 @@
 .dashboard-icon-button {
   border: 0;
   border-radius: 10px;
-  background: #ef4444;
+  background: var(--danger);
   color: #ffffff;
   font-weight: 700;
   width: 36px;
@@ -223,7 +228,7 @@
 }
 
 .dashboard-icon-button:hover {
-  background: #dc2626;
+  background: var(--danger-hover);
   opacity: 0.92;
 }
 
@@ -233,11 +238,11 @@
 }
 
 .dashboard-empty {
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--empty-border);
   border-radius: 12px;
   padding: 22px;
-  color: #64748b;
-  background: #f8fafc;
+  color: var(--text-soft);
+  background: var(--empty-bg);
 }
 
 @media (max-width: 960px) {
@@ -282,16 +287,16 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: var(--plan-bg);
+  border: 1px solid var(--plan-border);
   border-radius: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
 .plan-bar--full {
-  background: #fff7ed;
-  border-color: #fed7aa;
+  background: var(--plan-full-bg);
+  border-color: var(--plan-full-border);
 }
 
 .plan-badge {
@@ -299,37 +304,37 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--plan-badge-bg);
+  color: var(--plan-badge-text);
   padding: 2px 8px;
   border-radius: 999px;
 }
 
 .plan-bar--full .plan-badge {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--plan-full-badge-bg);
+  color: var(--plan-full-badge-text);
 }
 
 .plan-counter {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--plan-counter-text);
   font-weight: 500;
 }
 
 .plan-limit-msg {
   font-size: 0.8rem;
-  color: #c2410c;
+  color: var(--plan-limit-text);
   font-weight: 500;
 }
 
 /* ─── Limit banner ─────────────────────────────────────────────────────── */
 .dashboard-limit-banner {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
+  background: var(--banner-bg);
+  border: 1px solid var(--banner-border);
   border-radius: 8px;
   padding: 14px 16px;
   font-size: 0.9rem;
-  color: #9a3412;
+  color: var(--banner-text);
   margin-bottom: 16px;
   line-height: 1.5;
 }

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../services/api";
+import ThemeToggle from "../components/ThemeToggle";
+import { useTheme } from "../theme";
 import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +30,7 @@ export default function Login() {
       localStorage.setItem("pm_maxProducts", String(data.maxProducts || 3));
 
       navigate("/dashboard");
-    } catch {
+    } catch (err) {
       setError("Email ou senha invalidos");
     } finally {
       setLoading(false);
@@ -37,7 +40,10 @@ export default function Login() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <h1 className="login-title">PriceMonitor</h1>
+        <div className="login-card-topbar">
+          <h1 className="login-title">PriceMonitor</h1>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <p className="login-subtitle">Acesse sua conta para continuar</p>
 
         <form className="login-form" onSubmit={onSubmit}>
@@ -74,8 +80,6 @@ export default function Login() {
           <button className="login-button" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </button>
-
-
         </form>
 
         <p className="login-footer">
