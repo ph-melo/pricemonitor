@@ -118,11 +118,11 @@ public class ProductService {
 
     @Transactional
     public void delete(Long userId, Long productId) {
-        Product p = productRepository.findByUserIdAndId(userId, productId)
+        productRepository.findByUserIdAndId(userId, productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
 
         productRepository.deleteHistoryByProductId(productId);
-        productRepository.delete(p);
+        productRepository.deleteById(productId);
     }
 
     public ProductResponse getProductResponse(Product p) {
