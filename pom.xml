@@ -15,7 +15,7 @@
 	<groupId>com.paulo</groupId>
 	<artifactId>pricemonitor</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<n>pricemonitor</n>
+	<name>pricemonitor</name>
 	<description>Demo project for Spring Boot</description>
 
 	<properties>
