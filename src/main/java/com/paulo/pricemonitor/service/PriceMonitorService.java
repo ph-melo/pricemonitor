@@ -9,6 +9,7 @@ import com.paulo.pricemonitor.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,11 +25,23 @@ public class PriceMonitorService {
     private final MarketItemProvider marketItemProvider;
     private final EmailService emailService;
 
-    @Transactional
+    // Sem @Transactional aqui — cada produto roda na sua própria transação
     public void checkAllActiveProducts() {
         for (Product p : productRepository.findByActiveTrue()) {
-            checkOne(p, "JOB", false);
+            try {
+                checkOneSafe(p.getId());
+            } catch (Exception e) {
+                // Loga mas não deixa um produto derrubar os outros
+            }
         }
+    }
+
+    // Transação isolada por produto — falha de um não afeta os outros
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void checkOneSafe(Long productId) {
+        Product p = productRepository.findById(productId).orElse(null);
+        if (p == null) return; // produto foi deletado entre o findByActiveTrue e aqui
+        checkOne(p, "JOB", false);
     }
 
     @Transactional
@@ -81,7 +94,7 @@ public class PriceMonitorService {
             boolean hadPriceBefore = previousPrice != null;
             boolean changed = !hadPriceBefore || snapshot.price().compareTo(previousPrice) != 0;
 
-            // ✅ e-mail SOMENTE quando o preço cai
+            // E-mail somente quando o preço cai
             if (changed && hadPriceBefore && snapshot.price().compareTo(previousPrice) < 0) {
                 emailService.sendPriceDropEmail(
                         product.getUser().getEmail(),
