@@ -7,6 +7,7 @@ import com.paulo.pricemonitor.monitor.MonitorStatus;
 import com.paulo.pricemonitor.repository.PriceHistoryRepository;
 import com.paulo.pricemonitor.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PriceMonitorService {
@@ -25,7 +27,6 @@ public class PriceMonitorService {
     private final MarketItemProvider marketItemProvider;
     private final EmailService emailService;
 
-    // Sem @Transactional aqui — cada produto roda na sua própria transação
     public void checkAllActiveProducts() {
         for (Product p : productRepository.findByActiveTrue()) {
             try {
@@ -36,11 +37,10 @@ public class PriceMonitorService {
         }
     }
 
-    // Transação isolada por produto — falha de um não afeta os outros
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void checkOneSafe(Long productId) {
         Product p = productRepository.findById(productId).orElse(null);
-        if (p == null) return; // produto foi deletado entre o findByActiveTrue e aqui
+        if (p == null) return;
         checkOne(p, "JOB", false);
     }
 
@@ -94,15 +94,20 @@ public class PriceMonitorService {
             boolean hadPriceBefore = previousPrice != null;
             boolean changed = !hadPriceBefore || snapshot.price().compareTo(previousPrice) != 0;
 
-            // E-mail somente quando o preço cai
+            // E-mail somente quando o preço cai — erro de envio não quebra a verificação
             if (changed && hadPriceBefore && snapshot.price().compareTo(previousPrice) < 0) {
-                emailService.sendPriceDropEmail(
-                        product.getUser().getEmail(),
-                        snapshot.title(),
-                        product.getProductUrl(),
-                        previousPrice.toString(),
-                        snapshot.price().toString()
-                );
+                try {
+                    emailService.sendPriceDropEmail(
+                            product.getUser().getEmail(),
+                            snapshot.title(),
+                            product.getProductUrl(),
+                            previousPrice.toString(),
+                            snapshot.price().toString()
+                    );
+                } catch (Exception emailEx) {
+                    log.warn("Failed to send email for product {}: {}", product.getId(), emailEx.getMessage());
+                    // Não propaga — verificação foi bem-sucedida mesmo sem e-mail
+                }
             }
 
             if (!hadPriceBefore) {
