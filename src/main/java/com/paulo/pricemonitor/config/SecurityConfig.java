@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .anyRequest().authenticated()
@@ -53,7 +54,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // origens permitidas (suporta múltiplas separadas por vírgula)
         for (String origin : allowedOrigins.split(",")) {
             config.addAllowedOrigin(origin.trim());
         }
@@ -61,7 +61,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L); // cache do preflight por 1 hora
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -73,7 +73,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Suprime o aviso "Using generated security password"
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> { throw new UsernameNotFoundException("Use JWT auth"); };
