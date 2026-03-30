@@ -85,7 +85,7 @@ public class EnterpriseController {
     }
 
     @GetMapping("/violations/unseen/count")
-    public Map<String, Long> countUnseen(
+    public Map<String, Integer> countUnseen(
             @AuthenticationPrincipal AuthenticatedUser auth) {
         return Map.of("count",
                 enterpriseProductService.getUnseenViolations(auth.userId()).size());
