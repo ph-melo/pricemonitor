@@ -3,7 +3,8 @@ package com.paulo.pricemonitor.entity;
 public enum UserPlan {
 
     FREE(3),
-    PRO(15);
+    PRO(15),
+    ENTERPRISE(-1); // -1 = sem limite de produtos Enterprise
 
     private final int maxProducts;
 
@@ -13,5 +14,9 @@ public enum UserPlan {
 
     public int getMaxProducts() {
         return maxProducts;
+    }
+
+    public boolean isEnterprise() {
+        return this == ENTERPRISE;
     }
 }
