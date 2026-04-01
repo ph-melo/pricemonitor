@@ -56,7 +56,7 @@ export async function register(name, email, password) {
   return handleResponse(res);
 }
 
-// ─── Produtos ─────────────────────────────────────────────────────────────────
+// ─── Produtos Free/Pro ────────────────────────────────────────────────────────
 
 export async function fetchProducts() {
   const res = await fetch(`${BASE_URL}/products`, { headers: authHeaders() });
@@ -80,10 +80,64 @@ export async function deleteProduct(productId) {
   return handleResponse(res);
 }
 
-// ─── Monitor ──────────────────────────────────────────────────────────────────
-
 export async function checkProductNow(productId) {
   const res = await fetch(`${BASE_URL}/monitor/check/${productId}`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// ─── Enterprise ───────────────────────────────────────────────────────────────
+
+export async function fetchEnterpriseProducts() {
+  const res = await fetch(`${BASE_URL}/enterprise/products`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function addEnterpriseProduct({ ean, productName, mapPrice, tolerancePercent }) {
+  const res = await fetch(`${BASE_URL}/enterprise/products`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ ean, productName, mapPrice, tolerancePercent }),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteEnterpriseProduct(productId) {
+  const res = await fetch(`${BASE_URL}/enterprise/products/${productId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function checkEnterpriseProductNow(productId) {
+  const res = await fetch(`${BASE_URL}/enterprise/products/${productId}/check`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function fetchViolations() {
+  const res = await fetch(`${BASE_URL}/enterprise/violations`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function fetchUnseenViolations() {
+  const res = await fetch(`${BASE_URL}/enterprise/violations/unseen`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function markViolationsAsSeen() {
+  const res = await fetch(`${BASE_URL}/enterprise/violations/mark-seen`, {
     method: "POST",
     headers: authHeaders(),
   });

@@ -29,9 +29,14 @@ export default function Login() {
       localStorage.setItem("pm_plan", data.plan || "FREE");
       localStorage.setItem("pm_maxProducts", String(data.maxProducts || 3));
 
-      navigate("/dashboard");
+      // Redireciona para o dashboard correto conforme o plano
+      if (data.plan === "ENTERPRISE") {
+        navigate("/enterprise");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
-      setError("Email ou senha invalidos");
+      setError("Email ou senha inválidos");
     } finally {
       setLoading(false);
     }
