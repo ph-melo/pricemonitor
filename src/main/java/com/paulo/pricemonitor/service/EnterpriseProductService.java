@@ -2,12 +2,12 @@ package com.paulo.pricemonitor.service;
 
 import com.paulo.pricemonitor.dto.CreateEnterpriseProductRequest;
 import com.paulo.pricemonitor.dto.EnterpriseProductResponse;
-import com.paulo.pricemonitor.dto.PriceViolationResponse;
+import com.paulo.pricemonitor.dto.MlListingResponse;
 import com.paulo.pricemonitor.entity.EnterpriseProduct;
+import com.paulo.pricemonitor.entity.MlListing;
 import com.paulo.pricemonitor.entity.User;
-import com.paulo.pricemonitor.entity.UserPlan;
 import com.paulo.pricemonitor.repository.EnterpriseProductRepository;
-import com.paulo.pricemonitor.repository.PriceViolationRepository;
+import com.paulo.pricemonitor.repository.MlListingRepository;
 import com.paulo.pricemonitor.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,7 +23,7 @@ import java.util.List;
 public class EnterpriseProductService {
 
     private final EnterpriseProductRepository enterpriseProductRepository;
-    private final PriceViolationRepository priceViolationRepository;
+    private final MlListingRepository mlListingRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -42,20 +42,21 @@ public class EnterpriseProductService {
         }
 
         if (request.mapPrice() == null || request.mapPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Preço MAP inválido.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preço MAP inválido.");
         }
 
         EnterpriseProduct product = EnterpriseProduct.builder()
                 .ean(request.ean().trim())
                 .productName(request.productName().trim())
+                .marca(request.marca() != null ? request.marca().trim() : null)
                 .mapPrice(request.mapPrice())
                 .tolerancePercent(request.tolerancePercent() != null
                         ? request.tolerancePercent() : BigDecimal.ZERO)
                 .user(user)
                 .build();
 
-        return toResponse(enterpriseProductRepository.save(product));
+        EnterpriseProduct saved = enterpriseProductRepository.save(product);
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -70,63 +71,68 @@ public class EnterpriseProductService {
     public void delete(Long userId, Long productId) {
         enterpriseProductRepository.findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
-
-        priceViolationRepository.deleteByEnterpriseProductId(productId);
+        mlListingRepository.deleteByEnterpriseProductId(productId);
         enterpriseProductRepository.deleteById(productId);
     }
 
+    // Todos os anúncios de um produto
     @Transactional(readOnly = true)
-    public List<PriceViolationResponse> getViolations(Long userId) {
-        return priceViolationRepository.findByUserId(userId)
-                .stream()
-                .map(this::toViolationResponse)
-                .toList();
+    public List<MlListingResponse> getListingsByProduct(Long userId, Long productId) {
+        enterpriseProductRepository.findByIdAndUserId(productId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+        return mlListingRepository.findByProductId(productId)
+                .stream().map(this::toListingResponse).toList();
     }
 
+    // Todos os anúncios do usuário
     @Transactional(readOnly = true)
-    public List<PriceViolationResponse> getUnseenViolations(Long userId) {
-        return priceViolationRepository.findUnseenByUserId(userId)
-                .stream()
-                .map(this::toViolationResponse)
-                .toList();
+    public List<MlListingResponse> getAllListings(Long userId) {
+        return mlListingRepository.findByUserId(userId)
+                .stream().map(this::toListingResponse).toList();
+    }
+
+    // Só violações
+    @Transactional(readOnly = true)
+    public List<MlListingResponse> getViolations(Long userId) {
+        return mlListingRepository.findViolationsByUserId(userId)
+                .stream().map(this::toListingResponse).toList();
     }
 
     @Transactional
-    public void markAllViolationsAsSeen(Long userId) {
-        priceViolationRepository.markAllAsSeenByUserId(userId);
+    public void markAllAsSeen(Long userId) {
+        mlListingRepository.markAllAsSeenByUserId(userId);
     }
 
     // ─── Mappers ──────────────────────────────────────────────────────────────
 
     private EnterpriseProductResponse toResponse(EnterpriseProduct p) {
+        long total = mlListingRepository.countByProductId(p.getId());
+        long violations = mlListingRepository.countViolationsByProductId(p.getId());
         return new EnterpriseProductResponse(
-                p.getId(),
-                p.getEan(),
-                p.getProductName(),
-                p.getMapPrice(),
-                p.getTolerancePercent(),
-                p.isActive(),
-                p.getCreatedAt(),
-                p.getLastCheckAt()
+                p.getId(), p.getEan(), p.getProductName(), p.getMarca(),
+                p.getMapPrice(), p.getTolerancePercent(), p.isActive(),
+                p.getCreatedAt(), p.getLastCheckAt(), total, violations
         );
     }
 
-    private PriceViolationResponse toViolationResponse(
-            com.paulo.pricemonitor.entity.PriceViolation v) {
-        return new PriceViolationResponse(
-                v.getId(),
-                v.getEnterpriseProduct().getId(),
-                v.getEnterpriseProduct().getProductName(),
-                v.getEnterpriseProduct().getEan(),
-                v.getMlItemId(),
-                v.getListingUrl(),
-                v.getSellerName(),
-                v.getListingTitle(),
-                v.getListedPrice(),
-                v.getMapPrice(),
-                v.getPercentBelow(),
-                v.isSeen(),
-                v.getDetectedAt()
+    private MlListingResponse toListingResponse(MlListing l) {
+        return new MlListingResponse(
+                l.getId(),
+                l.getEnterpriseProduct().getId(),
+                l.getEnterpriseProduct().getProductName(),
+                l.getEnterpriseProduct().getEan(),
+                l.getEnterpriseProduct().getMarca(),
+                l.getMlItemId(),
+                l.getListingUrl(),
+                l.getSellerName(),
+                l.getSellerId(),
+                l.getListingTitle(),
+                l.getListedPrice(),
+                l.getMapPrice(),
+                l.getPercentBelow(),
+                l.isViolation(),
+                l.isSeen(),
+                l.getDetectedAt()
         );
     }
 }

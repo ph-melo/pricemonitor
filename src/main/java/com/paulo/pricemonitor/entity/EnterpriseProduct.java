@@ -24,6 +24,9 @@ public class EnterpriseProduct {
     @Column(nullable = false, length = 500)
     private String productName;
 
+    @Column(length = 255)
+    private String marca;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal mapPrice;
 

@@ -2,8 +2,8 @@ package com.paulo.pricemonitor.controller;
 
 import com.paulo.pricemonitor.dto.CreateEnterpriseProductRequest;
 import com.paulo.pricemonitor.dto.EnterpriseProductResponse;
-import com.paulo.pricemonitor.dto.PriceViolationResponse;
-import com.paulo.pricemonitor.entity.PriceViolation;
+import com.paulo.pricemonitor.dto.MlListingResponse;
+import com.paulo.pricemonitor.entity.MlListing;
 import com.paulo.pricemonitor.security.AuthenticatedUser;
 import com.paulo.pricemonitor.service.EnterpriseMonitorService;
 import com.paulo.pricemonitor.service.EnterpriseProductService;
@@ -35,6 +35,7 @@ public class EnterpriseController {
                         auth.userId(),
                         request.ean(),
                         request.productName(),
+                        request.marca(),
                         request.mapPrice(),
                         request.tolerancePercent()
                 ));
@@ -60,40 +61,44 @@ public class EnterpriseController {
     public Map<String, Object> checkNow(
             @PathVariable Long productId,
             @AuthenticationPrincipal AuthenticatedUser auth) {
-        List<PriceViolation> violations =
+        List<MlListing> listings =
                 enterpriseMonitorService.checkProductById(auth.userId(), productId);
+        long violations = listings.stream().filter(MlListing::isViolation).count();
         return Map.of(
-                "violationsFound", violations.size(),
-                "message", violations.isEmpty()
-                        ? "Nenhuma violação de MAP detectada"
-                        : violations.size() + " violação(ões) detectada(s)"
+                "totalListings", listings.size(),
+                "violations", violations,
+                "message", listings.isEmpty()
+                        ? "Nenhum anúncio encontrado para este EAN"
+                        : listings.size() + " anúncio(s) encontrado(s), " + violations + " violação(ões)"
         );
     }
 
-    // ─── Alertas / Violações ──────────────────────────────────────────────────
+    // ─── Anúncios ─────────────────────────────────────────────────────────────
+
+    @GetMapping("/products/{productId}/listings")
+    public List<MlListingResponse> getListingsByProduct(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal AuthenticatedUser auth) {
+        return enterpriseProductService.getListingsByProduct(auth.userId(), productId);
+    }
+
+    @GetMapping("/listings")
+    public List<MlListingResponse> getAllListings(
+            @AuthenticationPrincipal AuthenticatedUser auth) {
+        return enterpriseProductService.getAllListings(auth.userId());
+    }
+
+    // ─── Violações ────────────────────────────────────────────────────────────
 
     @GetMapping("/violations")
-    public List<PriceViolationResponse> getViolations(
+    public List<MlListingResponse> getViolations(
             @AuthenticationPrincipal AuthenticatedUser auth) {
         return enterpriseProductService.getViolations(auth.userId());
-    }
-
-    @GetMapping("/violations/unseen")
-    public List<PriceViolationResponse> getUnseenViolations(
-            @AuthenticationPrincipal AuthenticatedUser auth) {
-        return enterpriseProductService.getUnseenViolations(auth.userId());
-    }
-
-    @GetMapping("/violations/unseen/count")
-    public Map<String, Integer> countUnseen(
-            @AuthenticationPrincipal AuthenticatedUser auth) {
-        return Map.of("count",
-                enterpriseProductService.getUnseenViolations(auth.userId()).size());
     }
 
     @PostMapping("/violations/mark-seen")
     public void markAllAsSeen(
             @AuthenticationPrincipal AuthenticatedUser auth) {
-        enterpriseProductService.markAllViolationsAsSeen(auth.userId());
+        enterpriseProductService.markAllAsSeen(auth.userId());
     }
 }

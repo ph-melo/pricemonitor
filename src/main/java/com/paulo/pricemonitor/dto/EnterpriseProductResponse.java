@@ -7,9 +7,12 @@ public record EnterpriseProductResponse(
         Long id,
         String ean,
         String productName,
+        String marca,
         BigDecimal mapPrice,
         BigDecimal tolerancePercent,
         boolean active,
         LocalDateTime createdAt,
-        LocalDateTime lastCheckAt
+        LocalDateTime lastCheckAt,
+        long totalListings,
+        long totalViolations
 ) {}

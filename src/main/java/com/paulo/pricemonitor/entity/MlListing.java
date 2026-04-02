@@ -7,12 +7,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "price_violations")
+@Table(name = "ml_listings")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PriceViolation {
+public class MlListing {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,10 +43,15 @@ public class PriceViolation {
     @Column(name = "map_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal mapPrice;
 
-    @Column(name = "percent_below", nullable = false, precision = 5, scale = 2)
+    // null = não viola, > 0 = percentual de violação
+    @Column(name = "percent_below", precision = 5, scale = 2)
     private BigDecimal percentBelow;
 
-    @Column(nullable = false)
+    @Column(name = "is_violation", nullable = false)
+    @Builder.Default
+    private boolean violation = false;
+
+    @Column(name = "seen", nullable = false)
     @Builder.Default
     private boolean seen = false;
 
@@ -56,6 +61,5 @@ public class PriceViolation {
     @PrePersist
     public void prePersist() {
         this.detectedAt = LocalDateTime.now();
-        this.seen = false;
     }
 }

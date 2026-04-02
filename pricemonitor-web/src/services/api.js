@@ -14,30 +14,24 @@ function authHeaders() {
 
 async function handleResponse(res) {
   if (res.status === 204) return null;
-
   const text = await res.text().catch(() => "");
-
   if (!res.ok) {
     let message = `Erro ${res.status}`;
     if (text) {
       try {
         const json = JSON.parse(text);
         message = json.message || json.error || text;
-      } catch {
-        message = text;
-      }
+      } catch { message = text; }
     }
     const err = new Error(message);
     err.status = res.status;
     throw err;
   }
-
   if (!text) return null;
   try { return JSON.parse(text); } catch { return text; }
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-
 export async function login(email, password) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
@@ -57,7 +51,6 @@ export async function register(name, email, password) {
 }
 
 // ─── Produtos Free/Pro ────────────────────────────────────────────────────────
-
 export async function fetchProducts() {
   const res = await fetch(`${BASE_URL}/products`, { headers: authHeaders() });
   return handleResponse(res);
@@ -89,19 +82,16 @@ export async function checkProductNow(productId) {
 }
 
 // ─── Enterprise ───────────────────────────────────────────────────────────────
-
 export async function fetchEnterpriseProducts() {
-  const res = await fetch(`${BASE_URL}/enterprise/products`, {
-    headers: authHeaders(),
-  });
+  const res = await fetch(`${BASE_URL}/enterprise/products`, { headers: authHeaders() });
   return handleResponse(res);
 }
 
-export async function addEnterpriseProduct({ ean, productName, mapPrice, tolerancePercent }) {
+export async function addEnterpriseProduct({ ean, productName, marca, mapPrice, tolerancePercent }) {
   const res = await fetch(`${BASE_URL}/enterprise/products`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ ean, productName, mapPrice, tolerancePercent }),
+    body: JSON.stringify({ ean, productName, marca, mapPrice, tolerancePercent }),
   });
   return handleResponse(res);
 }
@@ -122,17 +112,20 @@ export async function checkEnterpriseProductNow(productId) {
   return handleResponse(res);
 }
 
-export async function fetchViolations() {
-  const res = await fetch(`${BASE_URL}/enterprise/violations`, {
+export async function fetchListingsByProduct(productId) {
+  const res = await fetch(`${BASE_URL}/enterprise/products/${productId}/listings`, {
     headers: authHeaders(),
   });
   return handleResponse(res);
 }
 
-export async function fetchUnseenViolations() {
-  const res = await fetch(`${BASE_URL}/enterprise/violations/unseen`, {
-    headers: authHeaders(),
-  });
+export async function fetchAllListings() {
+  const res = await fetch(`${BASE_URL}/enterprise/listings`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function fetchViolations() {
+  const res = await fetch(`${BASE_URL}/enterprise/violations`, { headers: authHeaders() });
   return handleResponse(res);
 }
 

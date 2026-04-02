@@ -1,9 +1,9 @@
 package com.paulo.pricemonitor.service;
 
 import com.paulo.pricemonitor.entity.EnterpriseProduct;
-import com.paulo.pricemonitor.entity.PriceViolation;
+import com.paulo.pricemonitor.entity.MlListing;
 import com.paulo.pricemonitor.repository.EnterpriseProductRepository;
-import com.paulo.pricemonitor.repository.PriceViolationRepository;
+import com.paulo.pricemonitor.repository.MlListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,12 +22,11 @@ public class EnterpriseMonitorService {
     private static final Logger log = Logger.getLogger(EnterpriseMonitorService.class.getName());
 
     private final EnterpriseProductRepository enterpriseProductRepository;
-    private final PriceViolationRepository priceViolationRepository;
+    private final MlListingRepository mlListingRepository;
     private final MlEanSearchService mlEanSearchService;
 
     public void checkAllEnterpriseProducts() {
-        List<EnterpriseProduct> products = enterpriseProductRepository.findByActiveTrue();
-        for (EnterpriseProduct p : products) {
+        for (EnterpriseProduct p : enterpriseProductRepository.findByActiveTrue()) {
             try {
                 checkProduct(p);
             } catch (Exception e) {
@@ -38,7 +37,7 @@ public class EnterpriseMonitorService {
     }
 
     @Transactional
-    public List<PriceViolation> checkProductById(Long userId, Long productId) {
+    public List<MlListing> checkProductById(Long userId, Long productId) {
         EnterpriseProduct product = enterpriseProductRepository
                 .findByIdAndUserId(productId, userId)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
@@ -46,51 +45,57 @@ public class EnterpriseMonitorService {
     }
 
     @Transactional
-    public List<PriceViolation> checkProduct(EnterpriseProduct product) {
-        List<MlEanSearchService.MlListingSnapshot> listings =
+    public List<MlListing> checkProduct(EnterpriseProduct product) {
+        // Remove listings anteriores do produto antes de re-escanear
+        mlListingRepository.deleteByEnterpriseProductId(product.getId());
+
+        List<MlEanSearchService.MlListingSnapshot> snapshots =
                 mlEanSearchService.searchByEan(product.getEan());
 
-        List<PriceViolation> violations = new ArrayList<>();
+        List<MlListing> saved = new ArrayList<>();
 
-        for (MlEanSearchService.MlListingSnapshot listing : listings) {
+        for (MlEanSearchService.MlListingSnapshot snap : snapshots) {
             BigDecimal mapPrice = product.getMapPrice();
-            BigDecimal listedPrice = listing.price();
+            BigDecimal listedPrice = snap.price();
 
             BigDecimal diff = mapPrice.subtract(listedPrice);
-            if (diff.compareTo(BigDecimal.ZERO) <= 0) continue;
+            boolean isViolation = false;
+            BigDecimal percentBelow = null;
 
-            BigDecimal percentBelow = diff
-                    .divide(mapPrice, 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100))
-                    .setScale(2, RoundingMode.HALF_UP);
+            if (diff.compareTo(BigDecimal.ZERO) > 0) {
+                percentBelow = diff
+                        .divide(mapPrice, 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP);
 
-            if (percentBelow.compareTo(product.getTolerancePercent()) <= 0) continue;
+                if (percentBelow.compareTo(product.getTolerancePercent()) > 0) {
+                    isViolation = true;
+                }
+            }
 
-            PriceViolation violation = PriceViolation.builder()
+            MlListing listing = MlListing.builder()
                     .enterpriseProduct(product)
-                    .mlItemId(listing.itemId())
-                    .listingUrl(listing.permalink())
-                    .sellerName(listing.sellerName())
-                    .sellerId(listing.sellerId())
-                    .listingTitle(listing.title())
+                    .mlItemId(snap.itemId())
+                    .listingUrl(snap.permalink())
+                    .sellerName(snap.sellerName())
+                    .sellerId(snap.sellerId())
+                    .listingTitle(snap.title())
                     .listedPrice(listedPrice)
                     .mapPrice(mapPrice)
                     .percentBelow(percentBelow)
+                    .violation(isViolation)
+                    .seen(false)
                     .build();
 
-            priceViolationRepository.save(violation);
-            violations.add(violation);
-
-            log.info("Violação MAP: EAN=" + product.getEan() +
-                    " vendedor=" + listing.sellerName() +
-                    " preço=" + listedPrice +
-                    " MAP=" + mapPrice +
-                    " abaixo=" + percentBelow + "%");
+            saved.add(mlListingRepository.save(listing));
         }
 
         product.setLastCheckAt(LocalDateTime.now());
         enterpriseProductRepository.save(product);
 
-        return violations;
+        long violations = saved.stream().filter(MlListing::isViolation).count();
+        log.info("EAN=" + product.getEan() + " anuncios=" + saved.size() + " violacoes=" + violations);
+
+        return saved;
     }
 }
