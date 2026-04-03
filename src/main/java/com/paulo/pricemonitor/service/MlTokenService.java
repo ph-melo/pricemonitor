@@ -2,7 +2,6 @@ package com.paulo.pricemonitor.service;
 
 import com.paulo.pricemonitor.entity.AppConfig;
 import com.paulo.pricemonitor.repository.AppConfigRepository;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +23,6 @@ public class MlTokenService {
     @Value("${ml.client-secret}")
     private String clientSecret;
 
-    // Usado apenas na primeira inicialização se o banco ainda não tiver o token
     @Value("${ml.refresh-token}")
     private String refreshTokenFallback;
 
@@ -38,18 +36,7 @@ public class MlTokenService {
         this.configRepository = configRepository;
     }
 
-    // Ao subir, garante que o refresh_token existe no banco
-    @PostConstruct
-    public void init() {
-        boolean existsInDb = configRepository.findByKey(REFRESH_TOKEN_KEY).isPresent();
-        if (!existsInDb) {
-            log.info("[ML Token] refresh_token não encontrado no banco. Salvando valor inicial da env var.");
-            configRepository.save(new AppConfig(REFRESH_TOKEN_KEY, refreshTokenFallback));
-        } else {
-            log.info("[ML Token] refresh_token carregado do banco com sucesso.");
-        }
-    }
-
+    // Sem @PostConstruct — tudo lazy, só executa quando o token for necessário
     public synchronized String getAccessToken() {
         if (Instant.now().isAfter(expiresAt.minusSeconds(300))) {
             log.info("[ML Token] Token expirado ou próximo de expirar, renovando...");
@@ -61,10 +48,15 @@ public class MlTokenService {
     @SuppressWarnings("unchecked")
     private void refresh() {
         try {
-            // Lê o refresh_token mais recente do banco
+            // Tenta pegar do banco, senão usa a env var como fallback
             String currentRefreshToken = configRepository.findByKey(REFRESH_TOKEN_KEY)
                     .map(AppConfig::getValue)
-                    .orElseThrow(() -> new IllegalStateException("refresh_token não encontrado no banco"));
+                    .orElseGet(() -> {
+                        log.info("[ML Token] refresh_token não encontrado no banco, usando env var.");
+                        AppConfig initial = new AppConfig(REFRESH_TOKEN_KEY, refreshTokenFallback);
+                        configRepository.save(initial);
+                        return refreshTokenFallback;
+                    });
 
             String body = "grant_type=refresh_token"
                     + "&client_id=" + clientId
@@ -84,7 +76,6 @@ public class MlTokenService {
 
             this.accessToken = (String) responseBody.get("access_token");
 
-            // Persiste o novo refresh_token no banco imediatamente
             String newRefreshToken = (String) responseBody.get("refresh_token");
             if (newRefreshToken != null && !newRefreshToken.isBlank()) {
                 AppConfig config = configRepository.findByKey(REFRESH_TOKEN_KEY)
