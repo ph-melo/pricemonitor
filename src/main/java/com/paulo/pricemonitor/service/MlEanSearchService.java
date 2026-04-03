@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import java.util.Map;
 public class MlEanSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(MlEanSearchService.class);
+    private static final int MULTIGET_BATCH_SIZE = 20;
 
     private final RestClient restClient;
     private final MlTokenService tokenService;
@@ -85,8 +87,8 @@ public class MlEanSearchService {
                 return;
             }
 
-            // Monta mapa de item_id → price/seller_id para usar depois
-            Map<String, Map<String, Object>> itemDataMap = new java.util.HashMap<>();
+            // Monta mapa item_id → dados do passo 1 (tem price)
+            Map<String, Map<String, Object>> itemDataMap = new HashMap<>();
             List<String> itemIds = new ArrayList<>();
             for (Map<String, Object> item : rawResults) {
                 String itemId = (String) item.get("item_id");
@@ -102,7 +104,21 @@ public class MlEanSearchService {
 
             log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, itemIds.size());
 
-            // Passo 2: multiget para pegar título e permalink real
+            // Passo 2: multiget em lotes de 20 (limite da API do ML)
+            for (int i = 0; i < itemIds.size(); i += MULTIGET_BATCH_SIZE) {
+                List<String> batch = itemIds.subList(i, Math.min(i + MULTIGET_BATCH_SIZE, itemIds.size()));
+                fetchItemDetails(batch, itemDataMap, token, results);
+            }
+
+        } catch (Exception e) {
+            log.error("[ML Search] Erro ao buscar anúncios de product_id={}: {}", productId, e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void fetchItemDetails(List<String> itemIds, Map<String, Map<String, Object>> itemDataMap,
+                                  String token, List<MlListingSnapshot> results) {
+        try {
             String ids = String.join(",", itemIds);
             var itemsResponse = restClient.get()
                     .uri("/items?ids={ids}&attributes=id,title,permalink,seller_id", ids)
@@ -123,9 +139,9 @@ public class MlEanSearchService {
 
                     String itemId    = (String) item.get("id");
                     String title     = (String) item.get("title");
-                    String permalink = (String) item.get("permalink"); // permalink real do ML
+                    String permalink = (String) item.get("permalink"); // link real do anúncio
 
-                    // Pega o preço do mapa do passo 1 (mais confiável)
+                    // Preço vem do passo 1 (mais confiável)
                     Map<String, Object> itemData = itemDataMap.get(itemId);
                     if (itemData == null) continue;
 
@@ -133,7 +149,6 @@ public class MlEanSearchService {
                     if (priceRaw == null) continue;
                     BigDecimal price = new BigDecimal(priceRaw.toString());
 
-                    // seller_id do multiget é mais confiável
                     Long sellerId = null;
                     Number sellerIdRaw = (Number) item.get("seller_id");
                     if (sellerIdRaw != null) sellerId = sellerIdRaw.longValue();
@@ -141,12 +156,12 @@ public class MlEanSearchService {
                     results.add(new MlListingSnapshot(itemId, title, permalink, price, null, sellerId));
 
                 } catch (Exception e) {
-                    log.warn("[ML Search] Erro ao parsear item: {}", e.getMessage());
+                    log.warn("[ML Search] Erro ao parsear item do lote: {}", e.getMessage());
                 }
             }
 
         } catch (Exception e) {
-            log.error("[ML Search] Erro ao buscar anúncios de product_id={}: {}", productId, e.getMessage());
+            log.error("[ML Search] Erro no multiget do lote {}: {}", itemIds, e.getMessage());
         }
     }
 
