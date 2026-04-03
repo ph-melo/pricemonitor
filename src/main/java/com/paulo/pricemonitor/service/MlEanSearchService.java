@@ -35,7 +35,6 @@ public class MlEanSearchService {
         String token = tokenService.getAccessToken();
 
         try {
-            // Passo 1: busca o product_id pelo EAN no catálogo do ML
             var productSearch = restClient.get()
                     .uri("/products/search?site_id=MLB&status=active&q={ean}", ean)
                     .header("Authorization", "Bearer " + token)
@@ -55,7 +54,6 @@ public class MlEanSearchService {
 
             log.info("[ML Search] EAN={} → {} produto(s) no catálogo", ean, products.size());
 
-            // Passo 2: para cada product_id, busca os anúncios ativos
             for (Map<String, Object> product : products) {
                 String productId = (String) product.get("id");
                 if (productId == null) continue;
@@ -72,7 +70,6 @@ public class MlEanSearchService {
     @SuppressWarnings("unchecked")
     private void fetchListingsByProductId(String productId, String token, List<MlListingSnapshot> results) {
         try {
-            // Passo 2a: busca os IDs dos anúncios pelo product_id
             var searchResponse = restClient.get()
                     .uri("/products/{productId}/items?status=active&limit=50", productId)
                     .header("Authorization", "Bearer " + token)
@@ -81,16 +78,31 @@ public class MlEanSearchService {
 
             if (searchResponse.getBody() == null) return;
 
-            // Esse endpoint retorna {"results": ["MLB123", "MLB456"]} — só os IDs
-            var itemIds = (List<String>) searchResponse.getBody().get("results");
-            if (itemIds == null || itemIds.isEmpty()) {
+            // O endpoint pode retornar IDs como String ou como Map — trata os dois casos
+            var rawResults = (List<Object>) searchResponse.getBody().get("results");
+            if (rawResults == null || rawResults.isEmpty()) {
                 log.info("[ML Search] Nenhum anúncio para product_id={}", productId);
+                return;
+            }
+
+            List<String> itemIds = new ArrayList<>();
+            for (Object raw : rawResults) {
+                if (raw instanceof String s) {
+                    itemIds.add(s);
+                } else if (raw instanceof Map<?, ?> m) {
+                    Object id = m.get("id");
+                    if (id != null) itemIds.add(id.toString());
+                }
+            }
+
+            if (itemIds.isEmpty()) {
+                log.info("[ML Search] Nenhum ID extraído para product_id={}", productId);
                 return;
             }
 
             log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, itemIds.size());
 
-            // Passo 2b: multiget para pegar detalhes de todos os itens de uma vez
+            // Multiget — detalhes de todos os itens em uma única chamada
             String ids = String.join(",", itemIds);
             var itemsResponse = restClient.get()
                     .uri("/items?ids={ids}&attributes=id,title,permalink,price,seller_id", ids)
@@ -104,7 +116,6 @@ public class MlEanSearchService {
                 try {
                     var wrapper = (Map<String, Object>) entry;
 
-                    // Ignora itens com erro (ex: pausados, removidos)
                     Integer code = (Integer) wrapper.get("code");
                     if (code == null || code != 200) continue;
 
