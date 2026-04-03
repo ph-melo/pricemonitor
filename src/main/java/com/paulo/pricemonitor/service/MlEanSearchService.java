@@ -35,6 +35,7 @@ public class MlEanSearchService {
         String token = tokenService.getAccessToken();
 
         try {
+            // Passo 1: busca o product_id pelo EAN no catálogo do ML
             var productSearch = restClient.get()
                     .uri("/products/search?site_id=MLB&status=active&q={ean}", ean)
                     .header("Authorization", "Bearer " + token)
@@ -78,55 +79,20 @@ public class MlEanSearchService {
 
             if (searchResponse.getBody() == null) return;
 
-            // LOG TEMPORÁRIO — para identificar o formato da resposta
-            log.info("[ML Search DEBUG] Resposta bruta product_id={}: {}", productId, searchResponse.getBody());
-
-            var rawResults = (List<Object>) searchResponse.getBody().get("results");
+            // O endpoint retorna objetos completos diretamente em results
+            var rawResults = (List<Map<String, Object>>) searchResponse.getBody().get("results");
             if (rawResults == null || rawResults.isEmpty()) {
                 log.info("[ML Search] Nenhum anúncio para product_id={}", productId);
                 return;
             }
 
-            List<String> itemIds = new ArrayList<>();
-            for (Object raw : rawResults) {
-                if (raw instanceof String s) {
-                    itemIds.add(s);
-                } else if (raw instanceof Map<?, ?> m) {
-                    Object id = m.get("id");
-                    if (id != null) itemIds.add(id.toString());
-                }
-            }
+            log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, rawResults.size());
 
-            if (itemIds.isEmpty()) {
-                log.info("[ML Search] Nenhum ID extraído para product_id={}", productId);
-                return;
-            }
-
-            log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, itemIds.size());
-
-            // Multiget — detalhes de todos os itens em uma única chamada
-            String ids = String.join(",", itemIds);
-            var itemsResponse = restClient.get()
-                    .uri("/items?ids={ids}&attributes=id,title,permalink,price,seller_id", ids)
-                    .header("Authorization", "Bearer " + token)
-                    .retrieve()
-                    .toEntity(List.class);
-
-            if (itemsResponse.getBody() == null) return;
-
-            for (Object entry : itemsResponse.getBody()) {
+            for (Map<String, Object> item : rawResults) {
                 try {
-                    var wrapper = (Map<String, Object>) entry;
-
-                    Integer code = (Integer) wrapper.get("code");
-                    if (code == null || code != 200) continue;
-
-                    var item = (Map<String, Object>) wrapper.get("body");
-                    if (item == null) continue;
-
-                    String itemId    = (String) item.get("id");
-                    String title     = (String) item.get("title");
-                    String permalink = (String) item.get("permalink");
+                    // O campo é item_id, não id
+                    String itemId = (String) item.get("item_id");
+                    if (itemId == null) continue;
 
                     Number priceRaw = (Number) item.get("price");
                     if (priceRaw == null) continue;
@@ -136,7 +102,10 @@ public class MlEanSearchService {
                     Number sellerIdRaw = (Number) item.get("seller_id");
                     if (sellerIdRaw != null) sellerId = sellerIdRaw.longValue();
 
-                    results.add(new MlListingSnapshot(itemId, title, permalink, price, null, sellerId));
+                    // Monta permalink a partir do item_id
+                    String permalink = "https://www.mercadolivre.com.br/p/" + itemId;
+
+                    results.add(new MlListingSnapshot(itemId, null, permalink, price, null, sellerId));
 
                 } catch (Exception e) {
                     log.warn("[ML Search] Erro ao parsear item: {}", e.getMessage());
