@@ -78,7 +78,9 @@ public class MlEanSearchService {
 
             if (searchResponse.getBody() == null) return;
 
-            // O endpoint pode retornar IDs como String ou como Map — trata os dois casos
+            // LOG TEMPORÁRIO — para identificar o formato da resposta
+            log.info("[ML Search DEBUG] Resposta bruta product_id={}: {}", productId, searchResponse.getBody());
+
             var rawResults = (List<Object>) searchResponse.getBody().get("results");
             if (rawResults == null || rawResults.isEmpty()) {
                 log.info("[ML Search] Nenhum anúncio para product_id={}", productId);
