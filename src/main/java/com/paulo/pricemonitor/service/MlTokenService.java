@@ -27,7 +27,7 @@ public class MlTokenService {
     private String refreshTokenFallback;
 
     private String accessToken;
-    private Instant expiresAt = Instant.MIN;
+    private Instant expiresAt = Instant.EPOCH; // ← correção aqui
 
     private final RestClient restClient = RestClient.create();
     private final AppConfigRepository configRepository;
@@ -36,7 +36,6 @@ public class MlTokenService {
         this.configRepository = configRepository;
     }
 
-    // Sem @PostConstruct — tudo lazy, só executa quando o token for necessário
     public synchronized String getAccessToken() {
         if (Instant.now().isAfter(expiresAt.minusSeconds(300))) {
             log.info("[ML Token] Token expirado ou próximo de expirar, renovando...");
@@ -48,7 +47,6 @@ public class MlTokenService {
     @SuppressWarnings("unchecked")
     private void refresh() {
         try {
-            // Tenta pegar do banco, senão usa a env var como fallback
             String currentRefreshToken = configRepository.findByKey(REFRESH_TOKEN_KEY)
                     .map(AppConfig::getValue)
                     .orElseGet(() -> {
