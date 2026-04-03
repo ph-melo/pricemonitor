@@ -72,24 +72,45 @@ public class MlEanSearchService {
     @SuppressWarnings("unchecked")
     private void fetchListingsByProductId(String productId, String token, List<MlListingSnapshot> results) {
         try {
+            // Passo 2a: busca os IDs dos anúncios pelo product_id
             var searchResponse = restClient.get()
-                    .uri("/sites/MLB/search?product_id={pid}&limit=50", productId)
+                    .uri("/products/{productId}/items?status=active&limit=50", productId)
                     .header("Authorization", "Bearer " + token)
                     .retrieve()
                     .toEntity(Map.class);
 
             if (searchResponse.getBody() == null) return;
 
-            var items = (List<Map<String, Object>>) searchResponse.getBody().get("results");
-            if (items == null || items.isEmpty()) {
+            // Esse endpoint retorna {"results": ["MLB123", "MLB456"]} — só os IDs
+            var itemIds = (List<String>) searchResponse.getBody().get("results");
+            if (itemIds == null || itemIds.isEmpty()) {
                 log.info("[ML Search] Nenhum anúncio para product_id={}", productId);
                 return;
             }
 
-            log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, items.size());
+            log.info("[ML Search] product_id={} → {} anúncio(s) encontrado(s)", productId, itemIds.size());
 
-            for (Map<String, Object> item : items) {
+            // Passo 2b: multiget para pegar detalhes de todos os itens de uma vez
+            String ids = String.join(",", itemIds);
+            var itemsResponse = restClient.get()
+                    .uri("/items?ids={ids}&attributes=id,title,permalink,price,seller_id", ids)
+                    .header("Authorization", "Bearer " + token)
+                    .retrieve()
+                    .toEntity(List.class);
+
+            if (itemsResponse.getBody() == null) return;
+
+            for (Object entry : itemsResponse.getBody()) {
                 try {
+                    var wrapper = (Map<String, Object>) entry;
+
+                    // Ignora itens com erro (ex: pausados, removidos)
+                    Integer code = (Integer) wrapper.get("code");
+                    if (code == null || code != 200) continue;
+
+                    var item = (Map<String, Object>) wrapper.get("body");
+                    if (item == null) continue;
+
                     String itemId    = (String) item.get("id");
                     String title     = (String) item.get("title");
                     String permalink = (String) item.get("permalink");
@@ -98,19 +119,14 @@ public class MlEanSearchService {
                     if (priceRaw == null) continue;
                     BigDecimal price = new BigDecimal(priceRaw.toString());
 
-                    String sellerName = null;
                     Long sellerId = null;
-                    var seller = (Map<String, Object>) item.get("seller");
-                    if (seller != null) {
-                        sellerName = (String) seller.get("nickname");
-                        Number sellerIdRaw = (Number) seller.get("id");
-                        if (sellerIdRaw != null) sellerId = sellerIdRaw.longValue();
-                    }
+                    Number sellerIdRaw = (Number) item.get("seller_id");
+                    if (sellerIdRaw != null) sellerId = sellerIdRaw.longValue();
 
-                    results.add(new MlListingSnapshot(itemId, title, permalink, price, sellerName, sellerId));
+                    results.add(new MlListingSnapshot(itemId, title, permalink, price, null, sellerId));
 
                 } catch (Exception e) {
-                    log.warn("[ML Search] Erro ao parsear item de product_id={}: {}", productId, e.getMessage());
+                    log.warn("[ML Search] Erro ao parsear item: {}", e.getMessage());
                 }
             }
 
